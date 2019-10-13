@@ -23,10 +23,8 @@ void coco_thd_restore_stack(thd_t *me) {
 
 // 移除coroutine的所有alarm
 static inline void remove_alarms(thd_t *me) {
-    if (me->alm_num > 0) {
-        for (int i = 0; i < me->alm_num; ++i) {
-            link_remove(&me->alms[i].box_ln);
-        }
+    for (int i = 0; i < me->alm_num; ++i) {
+        link_remove(&me->alms[i].box_ln);
     }
 }
 
@@ -76,6 +74,8 @@ thd_t *coco_new_thd(ctx_t *ctx, stk_t *stk) {
 
     coco_thd_bind_stk(thd, stk);
 
+    debug("thd[0x%016lx] alloc", (word_t) thd);
+
     return thd;
 }
 
@@ -91,7 +91,7 @@ void coco_free_thd(thd_t *thd) {
 
     remove_alarms(thd);
     if (thd->alm_num > 0)
-        free(thd->alms), thd->alms = 0;
+        free(thd->alms);
 
     stack_deconstruct(&thd->backup_stack);
 
@@ -100,5 +100,7 @@ void coco_free_thd(thd_t *thd) {
 
     memset(thd, 0, sizeof(*thd));
 
-    free(thd), thd = 0;
+    debug("thd[0x%016lx] free", (word_t) thd);
+
+    free(thd);
 }

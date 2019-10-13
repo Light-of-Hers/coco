@@ -24,6 +24,9 @@ stk_t *coco_new_stk(size_t cap) {
     stk_t *stk = coco_calloc(1, sizeof(*stk));
     link_init(&stk->ctx_ln);
     stack_construct(&stk->shared_stack, cap, TRUE);
+
+    debug("stk[0x%016lx] alloc", (word_t) stk);
+
     return stk;
 }
 
@@ -33,5 +36,8 @@ void coco_free_stk(stk_t *stk) {
     link_remove(&stk->ctx_ln);
     stack_deconstruct(&stk->shared_stack);
     memset(stk, 0, sizeof(*stk));
-    free(stk), stk = 0;
+
+    debug("stk[0x%016lx] free", (word_t) stk);
+
+    free(stk);
 }

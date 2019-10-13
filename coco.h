@@ -29,6 +29,8 @@ coco_box_t coco_box_create(int cap);
 
 int coco_box_close(coco_box_t box);
 
+coco_t coco_self();
+
 int coco_run(coco_t *co, coco_routine_t *entry, coco_msg_t arg, coco_t friend);
 
 int coco_send(coco_box_t box, coco_msg_t msg);

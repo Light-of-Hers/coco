@@ -51,9 +51,15 @@ bool_t coco_box_try_recv(box_t *me, coco_msg_t *msg) {
             // 发信阻塞，说明缓冲区已满
 
             alarm_t *alm = master(link_queue_head(&me->alarm_queue), alarm_t, box_ln);
-            if (msg)
-                *msg = me->buf.msgs[me->buf.head]; // 收到缓冲区头部的信息
-            me->buf.msgs[me->buf.head++] = alm->msg; // 把闹钟携带的信息加到缓冲区尾部
+            if (me->buf.cap > 0) {
+                if (msg)
+                    *msg = me->buf.msgs[me->buf.head]; // 收到缓冲区头部的信息
+                me->buf.msgs[me->buf.head] = alm->msg; // 把闹钟携带的信息加到缓冲区尾部
+                me->buf.head = (me->buf.head + 1) % me->buf.cap;
+            } else {
+                if (msg)
+                    *msg = alm->msg;
+            }
 
             thd_t *thd = alm->owner_thd;
             thd->ring = alm;
@@ -80,6 +86,8 @@ box_t *coco_new_box(ctx_t *ctx, int cap) {
     box->id = ctx->cur_box_id++;
     link_push_back(&ctx->box_list, &box->ctx_ln);
 
+    debug("box[0x%016lx] alloc", (word_t) box);
+
     return box;
 }
 
@@ -104,6 +112,8 @@ void coco_free_box(box_t *box) {
 
     memset(box, 0, sizeof(*box));
 
-    free(box), box = 0;
+    debug("box[0x%016lx] free", (word_t) box);
+
+    free(box);
 }
 

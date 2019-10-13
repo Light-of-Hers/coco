@@ -9,27 +9,27 @@ static __thread ctx_t *cur_ctx = 0;
 
 void asm_context_switch(thd_t *thd, void **src_sp, void *dst_sp);
 // rdi: thd_t* thd, rsi: void** src_sp, rdx: void* dst_sp
-void dummpy() {
-__asm__ __volatile__(
-"asm_context_switch:\n"
-"pushq  %rbp\n"
-"pushq  %rbx\n"
-"pushq  %r12\n"
-"pushq  %r13\n"
-"pushq  %r14\n"
-"pushq  %r15\n"
+void dummy() {
+    __asm__ __volatile__(
+    "asm_context_switch:\n"
+    "push   %rbp\n"
+    "push   %rbx\n"
+    "push   %r12\n"
+    "push   %r13\n"
+    "push   %r14\n"
+    "push   %r15\n"
 
-"movq   %rsp,   (%rsi)\n"
-"movq   %rdx,   %rsp\n"
+    "mov    %rsp,   (%rsi)\n"
+    "mov    %rdx,   %rsp\n"
 
-"popq   %r15\n"
-"popq   %r14\n"
-"popq   %r13\n"
-"popq   %r12\n"
-"popq   %rbx\n"
-"popq   %rbp\n"
-"ret\n"
-);
+    "pop    %r15\n"
+    "pop    %r14\n"
+    "pop    %r13\n"
+    "pop    %r12\n"
+    "pop    %rbx\n"
+    "pop    %rbp\n"
+    "ret\n"
+    );
 }
 
 #define ctx_clear_link(_list, _x) do{ while(!link_empty(&_list)) \
@@ -59,7 +59,7 @@ static void scheduler() {
     }
 }
 
-#define SCHEDULER_STACK_CAP (8 * KB)
+#define SCHEDULER_STACK_CAP (16 * KB)
 
 // 进入调度器例程
 static inline void coco_schedule() {
@@ -130,6 +130,11 @@ void coco_context_end() {
     free(cur_ctx), cur_ctx = 0;
 }
 
+// 获得当前coroutine ID
+coco_t coco_self() {
+    return (coco_t) cur_ctx->active_thd;
+}
+
 // 退出当前coroutine
 void coco_exit() {
     thd_t *thd = cur_ctx->active_thd;
@@ -175,7 +180,9 @@ int coco_run(coco_t *co, coco_routine_t *entry, coco_msg_t arg, coco_t friend) {
     thd_t *thd;
 
     thd_t *frd = (thd_t *) friend;
+
     if (frd && thd_valid(frd)) {
+        panic_if(frd->owner_ctx != cur_ctx, "a friend from other context");
         thd = coco_new_thd(cur_ctx, frd->bound_stk);
     } else if (!link_empty(&cur_ctx->free_stk_list)) {
         link_t *ln = link_dequeue(&cur_ctx->free_stk_list);
@@ -195,7 +202,7 @@ int coco_run(coco_t *co, coco_routine_t *entry, coco_msg_t arg, coco_t friend) {
 
 static inline void alloc_alarm(thd_t *thd, int n) {
     thd->alm_num = n;
-    thd->alms = coco_realloc(thd->alms, sizeof(alarm_t) * n);
+    thd->alms = coco_malloc(n * sizeof(alarm_t));
 }
 
 static inline void free_alarm(thd_t *thd) {
@@ -211,7 +218,7 @@ int coco_send(coco_box_t box_, coco_msg_t msg) {
     box_t *box = (box_t *) box_;
     if (!box_valid(box))
         return -1;
-
+    panic_if(box->owner_ctx != cur_ctx, "a box from other context");
     if (coco_box_try_send(box, msg))
         return 0;
 
@@ -238,7 +245,7 @@ int coco_recv(coco_box_t box_, coco_msg_t *msg) {
     box_t *box = (box_t *) box_;
     if (!box_valid(box))
         return -1;
-
+    panic_if(box->owner_ctx != cur_ctx, "a box from other context");
     if (coco_box_try_recv(box, msg))
         return 0;
 
@@ -271,6 +278,7 @@ int coco_select(coco_way_t ways[], int way_num, int need_block) {
             ways[i].valid = 0;
             return i;
         } else {
+            panic_if(box->owner_ctx != cur_ctx, "a box from other context");
             ways[i].valid = 1;
             if (((ways[i]).is_send && coco_box_try_send(box, ways[i].msg)) ||
                 coco_box_try_recv(box, &ways[i].msg))

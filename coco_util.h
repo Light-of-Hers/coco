@@ -29,6 +29,14 @@ typedef enum {
 #define panic_if(_cond, _args...) do_if(_cond, panic, _args)
 #define warn_if(_cond, _args...) do_if(_cond, warn, _args)
 
+//#define DEBUG
+
+#ifdef DEBUG
+#define debug(_args...) log(_args)
+#else
+#define debug(...) (void)0
+#endif
+
 static inline word_t round_down(word_t x, word_t f) {
     return x / f * f;
 }
@@ -91,18 +99,24 @@ static inline link_t *link_queue_head(link_t *queue) {
 }
 
 static inline void *coco_malloc(size_t sz) {
+    if (sz == 0)
+        return NULL;
     void *ptr = malloc(sz);
     panic_if(!ptr, "out of memory");
     return ptr;
 }
 
 static inline void *coco_calloc(size_t n, size_t sz) {
+    if (n == 0 || sz == 0)
+        return NULL;
     void *ptr = calloc(n, sz);
     panic_if(!ptr, "out of memory");
     return ptr;
 }
 
 static inline void *coco_realloc(void *ptr, size_t sz) {
+    if (sz == 0)
+        return NULL;
     ptr = realloc(ptr, sz);
     panic_if(!ptr, "out of memory");
     return ptr;

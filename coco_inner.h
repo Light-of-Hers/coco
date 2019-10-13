@@ -34,7 +34,7 @@ typedef struct {
 static inline void stack_construct(stack_t *me, size_t cap, bool_t has_guard_page) {
     me->has_guard_page = has_guard_page;
     if (!has_guard_page) {
-        me->mem = coco_realloc(me->mem, cap), me->cap = cap;
+        me->mem = coco_calloc(1, cap), me->cap = cap;
     } else {
         size_t page_size = getpagesize();
         cap = round_up(cap, page_size) + page_size;
@@ -42,6 +42,7 @@ static inline void stack_construct(stack_t *me, size_t cap, bool_t has_guard_pag
         me->mem = mmap(NULL, cap, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         panic_if(me->mem == MAP_FAILED, "mmap failed");
         panic_if(mprotect(me->mem, page_size, PROT_READ) < 0, "mprotect failed");
+        debug("stack range [%lx, %lx) alloc", (word_t) me->mem, (word_t) me->mem + me->cap);
     }
 }
 
@@ -51,6 +52,7 @@ static inline void stack_deconstruct(stack_t *me) {
         if (me->mem)
             free(me->mem), me->cap = 0, me->mem = 0;
     } else {
+        debug("stack range [%lx, %lx) free", (word_t) me->mem, (word_t) me->mem + me->cap);
         panic_if(munmap(me->mem, me->cap) < 0, "munmap failed"), me->cap = 0, me->mem = 0;
     }
 }
