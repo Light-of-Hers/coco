@@ -231,7 +231,7 @@ int coco_send(coco_box_t box_, coco_msg_t msg) {
     box->is_send = TRUE;
     coco_sleep();
 
-    if (!box_valid(box) || box->id != alm->box_id) {
+    if ((!box_valid(box) || box->id != alm->box_id) && !alm->trans_done) {
         free_alarm(thd);
         return -1;
     }
@@ -258,7 +258,7 @@ int coco_recv(coco_box_t box_, coco_msg_t *msg) {
     box->is_send = FALSE;
     coco_sleep();
 
-    if (!box_valid(box) || box->id != alm->box_id) {
+    if ((!box_valid(box) || box->id != alm->box_id) && !alm->trans_done) {
         free_alarm(thd);
         return -1;
     }
@@ -303,7 +303,7 @@ int coco_select(coco_way_t ways[], int way_num, int need_block) {
 
     ways[idx].msg = thd->ring->msg;
     box_t *box = (box_t *) ways[idx].box;
-    if (!box_valid(box) || thd->ring->box_id != box->id)
+    if ((!box_valid(box) || thd->ring->box_id != box->id) && !thd->ring->trans_done)
         ways[idx].valid = 0;
 
     free_alarm(thd);

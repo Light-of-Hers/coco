@@ -23,6 +23,7 @@ bool_t coco_box_try_send(box_t *me, coco_msg_t msg) {
             // 收信阻塞，说明缓冲区为空
 
             alarm_t *alm = master(link_queue_head(&me->alarm_queue), alarm_t, box_ln);
+            alm->trans_done = TRUE;
             alm->msg = msg;
 
             thd_t *thd = alm->owner_thd;
@@ -51,6 +52,7 @@ bool_t coco_box_try_recv(box_t *me, coco_msg_t *msg) {
             // 发信阻塞，说明缓冲区已满
 
             alarm_t *alm = master(link_queue_head(&me->alarm_queue), alarm_t, box_ln);
+            alm->trans_done = TRUE;
             if (me->buf.cap > 0) {
                 if (msg)
                     *msg = me->buf.msgs[me->buf.head]; // 收到缓冲区头部的信息

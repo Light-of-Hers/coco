@@ -93,6 +93,7 @@ typedef struct {
     link_t box_ln;
     int box_id;
     bool_t is_send;
+    bool_t trans_done;
 } alarm_t;
 
 // 构造一个alarm，并将其推入box的队列
@@ -102,6 +103,7 @@ alarm_construct(alarm_t *me, thd_t *thd, box_t *box, coco_msg_t msg, bool_t is_s
     me->msg = msg;
     me->is_send = is_send;
     me->box_id = box->id;
+    me->trans_done = FALSE;
     link_enqueue(&box->alarm_queue, &me->box_ln);
 }
 

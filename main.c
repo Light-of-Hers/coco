@@ -1,32 +1,41 @@
 #include "coco.h"
 #include <stdio.h>
 
-#define NCOCO 10
-#define NPING 10
+#define N_COCO 10
+#define N_ITEM 100
 
-coco_box_t box;
+static __thread coco_box_t box;
+static __thread int active;
 
-void ping_pong(coco_msg_t msg) {
-    if (msg % 2 == 0) {
-        while (coco_recv(box, &msg) >= 0) {
-            printf("[%016lx] pong[%d]\n", coco_self(), coco_msg_unwrap(msg, int));
-            coco_send(box, 0);
-        }
-    } else {
-        for (int i = 0; i < NPING; ++i) {
-            printf("[%016lx] ping[%d]\n", coco_self(), i);
-            coco_send(box, coco_msg_wrap(i));
-            coco_recv(box, 0);
-        }
+void consumer(coco_msg_t msg) {
+    int id = coco_msg_unwrap(msg, int);
+    while (coco_recv(box, &msg) >= 0) {
+        printf("[%d] consume %d\n", id, coco_msg_unwrap(msg, int));
+    }
+    active--;
+}
+
+void producer() {
+    for (int i = 0; i < N_ITEM; ++i) {
+        printf("produce %d\n", i);
+        coco_send(box, i);
     }
 }
 
 int main() {
     coco_context_start();
+
     box = coco_box_create(0);
+
     coco_t co;
-    coco_run(&co, &ping_pong, 0, 0);
-    ping_pong(1);
+    coco_run(&co, consumer, 0, 0), active = 1;
+    for (int i = 1; i < N_COCO; ++i)
+        coco_run(0, consumer, i, co), active++;
+    producer();
+
     coco_box_close(box);
+    while (active)
+        coco_yield();
+
     coco_context_end();
 }
